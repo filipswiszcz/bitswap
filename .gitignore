@@ -1,0 +1,13 @@
+# output files
+*
+!/**/
+!*.*
+
+# xcode debug files
+*.dSYM
+
+# vscode files
+.vscode
+
+# macos files
+.DS_Store
