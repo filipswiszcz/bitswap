@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 
 // TODO process args
     // support zapping through ssh tunel
@@ -33,9 +34,13 @@ int main(int argc, char *argv[]) {
         printf("No such file\n"); return 1;
     }
 
+    srand(time(NULL));
     char ln[64];
     while (fgets(ln, sizeof(ln), file) != NULL) {
-
+        for (size_t i = 0; i < sizeof(ln); i++) {
+            int b = rand() & 1;
+            printf("%d", b);
+        }
     }
     fclose(file);
 
