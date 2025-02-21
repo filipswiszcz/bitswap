@@ -29,18 +29,18 @@ int main(int argc, char *argv[]) {
         filename = argv[1];
     }
 
-    FILE *file = fopen(filename, "r+b");
+    FILE *file = fopen(filename, "rb+");
     if (file == NULL) {
         printf("No such file\n"); return 1;
     }
 
     srand(time(NULL));
-    char ln[64];
-    while (fgets(ln, sizeof(ln), file) != NULL) {
-        for (size_t i = 0; i < sizeof(ln); i++) {
-            int b = rand() & 1;
-            printf("%d", b);
-        }
+    int c;
+    while ((c = fgetc(file)) != EOF) {
+        fseek(file, -1, SEEK_CUR);
+        int b = rand() & 1;
+        fputc((char) b, file);
+        fflush(file);
     }
     fclose(file);
 
