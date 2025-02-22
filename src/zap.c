@@ -8,20 +8,22 @@
 
 // its not that fucking easy, because there is something called file system journaling?
 
-typedef enum {
-    // exclude if whole dir?
-    SSH,
-    DELETE
-} flag;
+// typedef enum {
+//     // exclude if whole dir?
+//     SSH,
+//     DELETE
+// } flag;
 
 int main(int argc, char *argv[]) {
     if (argc == 1) {
         printf("usage: zap [OPTION] target_file"); return 1;
     }
+
     char *filename;
-    if (!strcmp(argv[1], "--delete")) {
+    int del = 0;
+    if (!strcmp(argv[1], "--delete") || !strcmp(argv[1], "-d")) {
         if (argc > 2) {
-            filename = argv[2];
+            filename = argv[2]; del = 1;
         } else {
             printf("usage: zap [OPTION] target_file"); return 1;
         }
@@ -43,6 +45,10 @@ int main(int argc, char *argv[]) {
         fflush(file);
     }
     fclose(file);
+
+    if (del) {
+        remove(filename);
+    }
 
     return 0;
 }
