@@ -5,11 +5,14 @@
 #include <limits.h>
 #include <errno.h>
 
+#include <sys/stat.h>
+
 // TODO
 // concurrent overwriting
 // support zapping through ssh tunel
 
 // its not that fucking easy, because there is something called file system journaling
+// what if the same filename is used multiple times (store whole path and skip the same ones)
 
 typedef struct filenames filenames;
 
@@ -18,6 +21,15 @@ struct filenames {
     size_t k;
     size_t capacity;
 };
+
+int is_directory(char *filename) {
+    struct stat path;
+    if (stat(filename, &path) == 0) {
+        if (S_ISDIR(path.st_mode)) return 1;
+        else if (S_ISREG(path.st_mode)) return 0;
+    }
+    return -1;
+}
 
 void add_filename(filenames *arr, char *name) {
     do {
@@ -64,17 +76,24 @@ int main(int argc, char *argv[]) {
                 }
             }
         } else {
-            // TODO add target to list
-            printf("%s", argv[i]);
             add_filename(&fns, argv[i]);
         }
     }
 
-    // TODO for every name
+    // TODO
         // **select how many threads should be used
         // find if it is a file or dir
             // if dir, then run overwrite * k for every child
             // else run overwrite * k
+
+    for (size_t i = 0; i < fns.k; i++) {
+        int t = is_directory(fns.names[i]);
+        if (t == 1) {
+            // add files to array or search further in case of dir
+        } else if (t == 0) {
+            // add filename to queue and process with thread
+        }
+    }
 
     // FILE *file = fopen(filename, "rb+");
     // if (file == NULL) {
