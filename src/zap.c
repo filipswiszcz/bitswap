@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <dirent.h>
 #include <string.h>
 #include <time.h>
 #include <limits.h>
@@ -22,7 +23,7 @@ struct filenames {
     size_t capacity;
 };
 
-int is_directory(char *filename) {
+int isdir(char *filename) {
     struct stat path;
     if (stat(filename, &path) == 0) {
         if (S_ISDIR(path.st_mode)) return 1;
@@ -31,7 +32,7 @@ int is_directory(char *filename) {
     return -1;
 }
 
-void add_filename(filenames *arr, char *name) {
+void addfn(filenames *arr, char *name) {
     do {
         if (arr -> k >= arr -> capacity) {
             if (arr -> capacity == 0) arr -> capacity = 64;
@@ -42,14 +43,36 @@ void add_filename(filenames *arr, char *name) {
     } while (0);
 }
 
-void overwrite(FILE *file) {
+void getdfiles(filenames *arr, char* name) {
+    DIR *dir = opendir(name);
+    struct dirent *ent;
+    while ((ent = readdir(dir)) != NULL) {
+        if (!strcmp(ent -> d_name, ".") || !strcmp(ent -> d_name, "..")) continue;
+
+        size_t ts = snprintf(NULL, 0, "%s/%s", name, ent -> d_name) + 1;
+        char *cname = malloc(ts);
+        snprintf(cname, ts, "%s/%s", name, ent -> d_name);
+
+        int t = isdir(cname);
+        if (t == 1) {
+            getdfiles(arr, cname);
+        } else if (t == 0) {
+            addfn(arr, strdup(cname));
+        }
+        free(cname);
+    }
+    closedir(dir);
+}
+
+void owrite(FILE *file) {
     int c;
     while ((c = fgetc(file)) != EOF) {
-        fseek(file, -1, SEEK_CUR);
-        int b = rand() & 1;
-        fputc((char) b, file);
-        fflush(file);
+        // fseek(file, -1, SEEK_CUR);
+        // int b = rand() & 1;
+        // fputc((char) b, file);
+        printf("%c", c);
     }
+    fflush(file);
 }
 
 int main(int argc, char *argv[]) {
@@ -76,7 +99,12 @@ int main(int argc, char *argv[]) {
                 }
             }
         } else {
-            add_filename(&fns, argv[i]);
+            int t = isdir(argv[i]);
+            if (t == 1) {
+                getdfiles(&fns, argv[i]);
+            } else if (t == 0) {
+                addfn(&fns, argv[i]);
+            }
         }
     }
 
@@ -86,14 +114,17 @@ int main(int argc, char *argv[]) {
             // if dir, then run overwrite * k for every child
             // else run overwrite * k
 
+    FILE *cfile;
     for (size_t i = 0; i < fns.k; i++) {
-        int t = is_directory(fns.names[i]);
-        if (t == 1) {
-            // add files to array or search further in case of dir
-        } else if (t == 0) {
-            // add filename to queue and process with thread
+        cfile = fopen(fns.names[i], "rb+");
+        if (cfile == NULL) {
+            printf("zap: Could not open file: %s\n", fns.names[i]); continue;
         }
+        owrite(cfile);
+        fclose(cfile);
     }
+
+    // printf("size=%zu", fns.k);
 
     // FILE *file = fopen(filename, "rb+");
     // if (file == NULL) {
