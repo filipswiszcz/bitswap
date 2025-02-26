@@ -9,6 +9,7 @@
 #include <sys/stat.h>
 
 // TODO
+// change name to zz
 // concurrent overwriting
 // support zapping through ssh tunel
 
@@ -67,10 +68,10 @@ void getdfiles(filenames *arr, char* name) {
 void owrite(FILE *file) {
     int c;
     while ((c = fgetc(file)) != EOF) {
-        // fseek(file, -1, SEEK_CUR);
-        // int b = rand() & 1;
-        // fputc((char) b, file);
-        printf("%c", c);
+        fseek(file, -1, SEEK_CUR);
+        int b = rand() & 1;
+        fputc((char) b, file);
+        // printf("%c", c);
     }
     fflush(file);
 }
@@ -113,14 +114,18 @@ int main(int argc, char *argv[]) {
         // find if it is a file or dir
             // if dir, then run overwrite * k for every child
             // else run overwrite * k
-
+    srand(time(NULL));
     FILE *cfile;
     for (size_t i = 0; i < fns.k; i++) {
         cfile = fopen(fns.names[i], "rb+");
         if (cfile == NULL) {
             printf("zap: Could not open file: %s\n", fns.names[i]); continue;
         }
-        owrite(cfile);
+        if (k > 1) {
+            for (size_t j = 0; j < k; j++) owrite(cfile);
+        } else {
+            owrite(cfile);
+        }
         fclose(cfile);
     }
 
