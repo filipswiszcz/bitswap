@@ -128,24 +128,7 @@ int main(int argc, char *argv[]) {
         }
         fclose(cfile);
     }
-
-    // printf("size=%zu", fns.k);
-
-    // FILE *file = fopen(filename, "rb+");
-    // if (file == NULL) {
-    //     printf("zap: %s: No such file or directory", filename); return 1;
-    // }
-
-    // srand(time(NULL));
-    // int c;
-    // while ((c = fgetc(file)) != EOF) {
-    //     fseek(file, -1, SEEK_CUR);
-    //     int b = rand() & 1;
-    //     fputc((char) b, file);
-    //     fflush(file);
-    // }
-    // fclose(file);
-
+	
     // if (del) {
     //     remove(filename);
     // }
