@@ -78,7 +78,7 @@ void owrite(FILE *file) {
 
 int main(int argc, char *argv[]) {
     if (argc < 2) {
-        printf("usage: zap [-d] [-r reiteration] target_file\n       zap [-d] [-r reiteration] target_directory\n"); return 1;
+        printf("usage: zz [-d] [-r reiteration] target_file\n       zz [-d] [-r reiteration] target_directory\n"); return 1;
     }
     
     filenames fns = {0};
@@ -87,14 +87,14 @@ int main(int argc, char *argv[]) {
         if (!strcmp(argv[i], "-d") || !strcmp(argv[i], "--delete")) del = 1;
         else if (!strcmp(argv[i], "-r") || !strcmp(argv[i], "--reiteration")) {
             if ((i + 1) > argc) {
-                printf("usage: zap [-d] [-r reiteration] target_file\n       zap [-d] [-r reiteration] target_directory\n"); return 1;
+                printf("usage: zz [-d] [-r reiteration] target_file\n       zz [-d] [-r reiteration] target_directory\n"); return 1;
             } else {
                 char *p;
                 int rk = strtol(argv[i + 1], &p, 10);
                 if (errno != 0 || *p != '\0') {
-                    printf("zap: Reiteration has to be a number"); return 1;
+                    printf("zz: Reiteration has to be a number"); return 1;
                 } else if (rk > 10 || rk < 1) {
-                    printf("zap: -r: Reiteration has to be in range <1, 11)"); return 1;
+                    printf("zz: -r: Reiteration has to be in range <1, 11)"); return 1;
                 } else {
                     k = rk; i++;
                 }
@@ -119,7 +119,7 @@ int main(int argc, char *argv[]) {
     for (size_t i = 0; i < fns.k; i++) {
         cfile = fopen(fns.names[i], "rb+");
         if (cfile == NULL) {
-            printf("zap: Could not open file: %s\n", fns.names[i]); continue;
+            printf("zz: Could not open file: %s\n", fns.names[i]); continue;
         }
         if (k > 1) {
             for (size_t j = 0; j < k; j++) owrite(cfile);
@@ -127,6 +127,9 @@ int main(int argc, char *argv[]) {
             owrite(cfile);
         }
         fclose(cfile);
+        if (del) {
+            remove(fns.names[i]); // remove dir as well
+        }
     }
 	
     // if (del) {
