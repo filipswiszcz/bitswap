@@ -11,9 +11,74 @@
 #include <string.h>
 #include <time.h>
 #include <limits.h>
+#include <pthread.h>
 #include <errno.h>
 
 #include <sys/stat.h>
+
+#define MAX_THREADS = 64
+#define MAX_TASKS = 65536
+
+typedef struct threadpool_task threadpool_task_t;
+
+struct threadpool_task {
+    void (*function) (void*);
+    void *arg;
+};
+
+typedef struct threadpool threadpool_t;
+
+struct threadpool {
+    pthread_t *threads;
+    pthread_mutex_t lock;
+    pthread_cond_t notif;
+    threadpool_task_t *tasks;
+    uint16_t threads_k;
+    uint16_t running;
+    uint16_t tasks_k;
+};
+
+typedef enum {
+    INVALID = -1,
+    LOCK_FAILURE = -2,
+    THREAD_FAILURE = -3,
+    FULL = -4,
+    SHUTDOWN = -5
+} threadpool_error_t;
+
+static void *threadpool_thread(void *threadpool);
+
+threadpool_t *tpinit(uint16_t threads, uint16_t tasks) {
+    threadpool_t *threadpool;
+    if ((threadpool = (threadpool_t*) malloc(sizeof(threadpool_t))) == NULL) {
+        // error and free
+        return NULL;
+    }
+    threadpool -> threads_k = 0;
+    threadpool -> tasks_k = tasks;
+
+    threadpool -> threads = (pthread_t*) malloc(sizeof(pthread_t) * threads);
+    threadpool -> tasks = (threadpool_task_t*) malloc(sizeof(threadpool_task_t) * tasks);
+
+    if ((pthread_mutex_init(&(threadpool -> lock), NULL) != 0) || (pthread_cond_init(&(threadpool -> notif), NULL) != NULL) 
+        || (threadpool -> threads == NULL) || (threadpool -> tasks) == NULL) {
+            // error and free
+            return NULL;
+        }
+
+    for (int i = 0; i < threads; i++) {
+        if (pthread_create(&(threadpool -> threads[i]), NULL, threadpool_thread, (void*) threadpool) != 0) {
+            // error and free
+            return NULL;
+        }
+        threadpool -> threads_k++;
+        threadpool -> running++;
+    }
+
+    return threadpool;
+}
+
+int tpadd(threadpool_t *threadpool) {}
 
 // TODO
 // concurrent overwriting
@@ -86,7 +151,7 @@ void owrite(FILE *file) {
 
 int main(int argc, char *argv[]) {
     if (argc < 2) {
-        printf("usage: zz [-d] [-r reiteration] target_file\n       zz [-d] [-r reiteration] target_directory\n"); return 1;
+        printf("usage: zz [-d] [-r reiteration] [-t threads] target_file\n       zz [-d] [-r reiteration] [-t threads] target_directory\n"); return 1;
     }
     
     filenames fns = {0}, dns = {0};
@@ -95,14 +160,28 @@ int main(int argc, char *argv[]) {
         if (!strcmp(argv[i], "-d") || !strcmp(argv[i], "--delete")) del = 1;
         else if (!strcmp(argv[i], "-r") || !strcmp(argv[i], "--reiteration")) {
             if ((i + 1) > argc) {
-                printf("usage: zz [-d] [-r reiteration] target_file\n       zz [-d] [-r reiteration] target_directory\n"); return 1;
+                printf("usage: zz [-d] [-r reiteration] [-t threads] target_file\n       zz [-d] [-r reiteration] [-t threads] target_directory\n"); return 1;
             } else {
                 char *p;
                 int rk = strtol(argv[i + 1], &p, 10);
                 if (errno != 0 || *p != '\0') {
                     printf("zz: Reiteration has to be a number\n"); return 1;
-                } else if (rk > 10 || rk < 1) {
-                    printf("zz: -r: Reiteration has to be in range <1, 11)\n"); return 1;
+                } else if (rk > 8 || rk < 1) {
+                    printf("zz: -r: Reiteration has to be in range <1, 8>\n"); return 1;
+                } else {
+                    k = rk; i++;
+                }
+            }
+        } else if (!strcmp(argv[i], "-t") || !strcmp(argv[i], "--threads")) {
+            if ((i + 1) > argc) {
+
+            } else {
+                char *p;
+                int rk = strtol(argv[i + 1], &p, 10);
+                if (errno != 0 || *p != '\0') {
+                    printf("zz: Threads have to be a number\n"); return 1;
+                } else if (rk > 8 || rk < 1) {
+                    printf("zz: -t: Threads have to be in range <1, 8>\n"); return 1;
                 } else {
                     k = rk; i++;
                 }
@@ -119,9 +198,6 @@ int main(int argc, char *argv[]) {
             }
         }
     }
-
-    // TODO
-    // **auto select how many threads should be used
 
     srand(time(NULL));
     FILE *cfile;
