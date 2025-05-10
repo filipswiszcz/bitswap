@@ -11,9 +11,60 @@
 #include <string.h>
 #include <time.h>
 #include <limits.h>
+#include <pthread.h>
 #include <errno.h>
 
 #include <sys/stat.h>
+
+/*** QUEUE ***/
+
+typedef struct queue_node queue_node_t;
+
+struct queue_node {
+    char *filepath;
+    queue_node_t *next;
+};
+
+typedef struct queue queue_t;
+
+struct queue {
+    queue_node_t *front, *end;
+    uint32_t k;
+};
+
+queue_t *que_init() {
+    queue_t *queue = (queue_t*) malloc(sizeof(queue_t));
+    queue -> front = NULL; queue -> end = NULL; queue -> k = 0;
+    return queue;
+}
+
+void que_offer(queue_t *queue, char *filepath) {
+    queue_node_t *node = (queue_node_t*) malloc(sizeof(queue_node_t));
+    node -> filepath = filepath; node -> next = NULL;
+    if (queue -> end == NULL) {
+        queue -> front = node; queue -> end = node;
+    } else {
+        queue -> end -> next = node;
+        queue -> end = node;
+    } queue -> k++;
+}
+
+char *que_poll(queue_t *queue) {
+    if (queue -> front == NULL) return NULL;
+    char *filepath = queue -> front -> filepath;
+    queue_node_t *node = queue -> front;
+    queue -> front = queue -> front -> next;
+    if (queue -> front == NULL) queue -> end = NULL;
+    free(node); queue -> k--;
+    return filepath;
+}
+
+void que_destr(queue_t *queue) {
+    while (queue -> k > 0) que_poll(queue);
+    free(queue);
+}
+
+/*** ANNIHILATOR ***/
 
 // TODO
 // concurrent overwriting
@@ -86,7 +137,7 @@ void owrite(FILE *file) {
 
 int main(int argc, char *argv[]) {
     if (argc < 2) {
-        printf("usage: zz [-d] [-r reiteration] target_file\n       zz [-d] [-r reiteration] target_directory\n"); return 1;
+        printf("usage: zz [-d] [-r reiteration] [-t threads] target_file\n       zz [-d] [-r reiteration] [-t threads] target_directory\n"); return 1;
     }
     
     filenames fns = {0}, dns = {0};
@@ -95,14 +146,28 @@ int main(int argc, char *argv[]) {
         if (!strcmp(argv[i], "-d") || !strcmp(argv[i], "--delete")) del = 1;
         else if (!strcmp(argv[i], "-r") || !strcmp(argv[i], "--reiteration")) {
             if ((i + 1) > argc) {
-                printf("usage: zz [-d] [-r reiteration] target_file\n       zz [-d] [-r reiteration] target_directory\n"); return 1;
+                printf("usage: zz [-d] [-r reiteration] [-t threads] target_file\n       zz [-d] [-r reiteration] [-t threads] target_directory\n"); return 1;
             } else {
                 char *p;
                 int rk = strtol(argv[i + 1], &p, 10);
                 if (errno != 0 || *p != '\0') {
                     printf("zz: Reiteration has to be a number\n"); return 1;
-                } else if (rk > 10 || rk < 1) {
-                    printf("zz: -r: Reiteration has to be in range <1, 11)\n"); return 1;
+                } else if (rk > 8 || rk < 1) {
+                    printf("zz: -r: Reiteration has to be in range <1, 8>\n"); return 1;
+                } else {
+                    k = rk; i++;
+                }
+            }
+        } else if (!strcmp(argv[i], "-t") || !strcmp(argv[i], "--threads")) {
+            if ((i + 1) > argc) {
+                // thread support
+            } else {
+                char *p;
+                int rk = strtol(argv[i + 1], &p, 10);
+                if (errno != 0 || *p != '\0') {
+                    printf("zz: Threads have to be a number\n"); return 1;
+                } else if (rk > 8 || rk < 1) {
+                    printf("zz: -t: Threads have to be in range <1, 8>\n"); return 1;
                 } else {
                     k = rk; i++;
                 }
@@ -119,9 +184,6 @@ int main(int argc, char *argv[]) {
             }
         }
     }
-
-    // TODO
-    // **auto select how many threads should be used
 
     srand(time(NULL));
     FILE *cfile;
