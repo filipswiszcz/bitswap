@@ -16,69 +16,55 @@
 
 #include <sys/stat.h>
 
-#define MAX_THREADS = 64
-#define MAX_TASKS = 65536
+/*** QUEUE ***/
 
-typedef struct threadpool_task threadpool_task_t;
+typedef struct queue_node queue_node_t;
 
-struct threadpool_task {
-    void (*function) (void*);
-    void *arg;
+struct queue_node {
+    char *filepath;
+    queue_node_t *next;
 };
 
-typedef struct threadpool threadpool_t;
+typedef struct queue queue_t;
 
-struct threadpool {
-    pthread_t *threads;
-    pthread_mutex_t lock;
-    pthread_cond_t notif;
-    threadpool_task_t *tasks;
-    uint16_t threads_k;
-    uint16_t running;
-    uint16_t tasks_k;
+struct queue {
+    queue_node_t *front, *end;
+    uint32_t k;
 };
 
-typedef enum {
-    INVALID = -1,
-    LOCK_FAILURE = -2,
-    THREAD_FAILURE = -3,
-    FULL = -4,
-    SHUTDOWN = -5
-} threadpool_error_t;
-
-static void *threadpool_thread(void *threadpool);
-
-threadpool_t *tpinit(uint16_t threads, uint16_t tasks) {
-    threadpool_t *threadpool;
-    if ((threadpool = (threadpool_t*) malloc(sizeof(threadpool_t))) == NULL) {
-        // error and free
-        return NULL;
-    }
-    threadpool -> threads_k = 0;
-    threadpool -> tasks_k = tasks;
-
-    threadpool -> threads = (pthread_t*) malloc(sizeof(pthread_t) * threads);
-    threadpool -> tasks = (threadpool_task_t*) malloc(sizeof(threadpool_task_t) * tasks);
-
-    if ((pthread_mutex_init(&(threadpool -> lock), NULL) != 0) || (pthread_cond_init(&(threadpool -> notif), NULL) != NULL) 
-        || (threadpool -> threads == NULL) || (threadpool -> tasks) == NULL) {
-            // error and free
-            return NULL;
-        }
-
-    for (int i = 0; i < threads; i++) {
-        if (pthread_create(&(threadpool -> threads[i]), NULL, threadpool_thread, (void*) threadpool) != 0) {
-            // error and free
-            return NULL;
-        }
-        threadpool -> threads_k++;
-        threadpool -> running++;
-    }
-
-    return threadpool;
+queue_t *que_init() {
+    queue_t *queue = (queue_t*) malloc(sizeof(queue_t));
+    queue -> front = NULL; queue -> end = NULL; queue -> k = 0;
+    return queue;
 }
 
-int tpadd(threadpool_t *threadpool) {}
+void que_offer(queue_t *queue, char *filepath) {
+    queue_node_t *node = (queue_node_t*) malloc(sizeof(queue_node_t));
+    node -> filepath = filepath; node -> next = NULL;
+    if (queue -> end == NULL) {
+        queue -> front = node; queue -> end = node;
+    } else {
+        queue -> end -> next = node;
+        queue -> end = node;
+    } queue -> k++;
+}
+
+char *que_poll(queue_t *queue) {
+    if (queue -> front == NULL) return NULL;
+    char *filepath = queue -> front -> filepath;
+    queue_node_t *node = queue -> front;
+    queue -> front = queue -> front -> next;
+    if (queue -> front == NULL) queue -> end = NULL;
+    free(node); queue -> k--;
+    return filepath;
+}
+
+void que_destr(queue_t *queue) {
+    while (queue -> k > 0) que_poll(queue);
+    free(queue);
+}
+
+/*** ANNIHILATOR ***/
 
 // TODO
 // concurrent overwriting
@@ -174,7 +160,7 @@ int main(int argc, char *argv[]) {
             }
         } else if (!strcmp(argv[i], "-t") || !strcmp(argv[i], "--threads")) {
             if ((i + 1) > argc) {
-
+                // thread support
             } else {
                 char *p;
                 int rk = strtol(argv[i + 1], &p, 10);
